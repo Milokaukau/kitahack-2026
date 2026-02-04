@@ -2,18 +2,16 @@ name: Daily AI Companion
 
 on:
   schedule:
-    # Runs at 10:00 AM Singapore Time (02:00 UTC)
-    - cron: '0 2 * * *'
-  workflow_dispatch: # Allows manual testing button
+    # 09:00 UTC = 5:00 PM Malaysia/Singapore Time
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Keep this so you can still test manually!
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-
-    # TELL GITHUB TO LOOK INSIDE YOUR BOT FOLDER
     defaults:
       run:
-        working-directory: ./daily_bot
+        working-directory: ./daily_bot  # <-- Make sure this line is still here!
 
     steps:
       - uses: actions/checkout@v3
@@ -24,12 +22,9 @@ jobs:
           node-version: '18'
 
       - name: Install Dependencies
-        # This will now run inside ./daily_bot/ automatically
         run: npm install
 
       - name: Run AI Bot
         env:
-          # These grab the keys you saved in GitHub Settings
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: node daily_bot.js
