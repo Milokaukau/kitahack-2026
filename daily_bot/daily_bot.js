@@ -1,7 +1,9 @@
 const admin = require('firebase-admin');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// 1. Setup Keys (Reads from GitHub Secret)
+// 1. Setup Keys
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -10,18 +12,17 @@ admin.initializeApp({
 const db = admin.firestore();
 
 async function runBot() {
-  console.log("🤖 Starting Simple Bot...");
+  console.log("🤖 Bot Waking Up...");
 
   try {
-    // --- STEP 1: THE MEMORY CHECK ---
-    // We check a specific document to see if we already finished the job for today.
-    const todayStr = new Date().toISOString().split('T')[0]; // Returns "2026-02-05"
+    // --- STEP 1: MEMORY CHECK ---
+    const todayStr = new Date().toISOString().split('T')[0];
     const trackerRef = db.collection('bot_memory').doc('daily_tracker');
     const trackerDoc = await trackerRef.get();
 
     if (trackerDoc.exists && trackerDoc.data().lastSentDate === todayStr) {
       console.log(`💤 Already sent a message today (${todayStr}). Going back to sleep.`);
-      return; // STOP HERE. Exit the function.
+      return;
     }
 
     // --- STEP 2: THE DICE ROLL ---
@@ -30,10 +31,10 @@ async function runBot() {
     const currentHourUTC = new Date().getUTCHours();
     const isLastChance = (currentHourUTC >= 13);
 
-    // 30% chance to send now.
-    const shouldSend = Math.random() < 0.30;
+    // 100% chance to send now to test if the AI integration works.
+    const shouldSend = Math.random() < 1.0;
 
-    console.log(`Hour (UTC): ${currentHourUTC} | Last Chance: ${isLastChance} | Dice Win: ${shouldSend}`);
+    console.log(`Hour (UTC): ${currentHourUTC} | Last Chance: ${isLastChance} | Should Send: ${shouldSend}`);
 
     // If the dice lost AND it is not the last chance -> Sleep
     if (!shouldSend && !isLastChance) {
@@ -43,18 +44,28 @@ async function runBot() {
 
     console.log("Sending message now...");
 
-    // --- STEP 3: THE ACTION (Send "Hi") ---
-    // Writing to the same test user as before
+    // --- STEP 3: GENERATE SIMPLE CONTENT ---
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    // SUPER SIMPLE PROMPT
+    const prompt = "Write a short, friendly 'Hello' message to a friend. No hashtags.";
+
+    const result = await model.generateContent(prompt);
+    const messageText = result.response.text().trim();
+
+    console.log(`📝 Gemini generated: "${messageText}"`);
+
+    // --- STEP 4: SAVE TO DB ---
     await db.collection('chats').doc('test_user').collection('messages').add({
-      text: "Hi! This is a RANDOMIZED message from the bot.",
-      sender: "Bot",
+      text: messageText,
+      sender: "AI Companion",
+      isUser: false,
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // --- STEP 4: UPDATE MEMORY ---
-    // Mark today as done so we don't send again until tomorrow
+    // --- STEP 5: UPDATE MEMORY ---
     await trackerRef.set({ lastSentDate: todayStr });
-    console.log("✅ Success! Message sent and memory updated.");
+    console.log("✅ Success! Message sent.");
 
   } catch (error) {
     console.error("❌ Error running bot:", error);
