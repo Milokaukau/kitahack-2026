@@ -45,7 +45,7 @@ async function runBot() {
     console.log("Sending message now...");
 
     // --- STEP 3: GENERATE SIMPLE CONTENT ---
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // SUPER SIMPLE PROMPT
     const prompt = "Write a short, friendly 'Hello' message to a friend. No hashtags.";
