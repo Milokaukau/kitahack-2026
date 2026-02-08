@@ -46,3 +46,4 @@ app.*.map.json
 
 # Manual addtion
 /daily_bot/node_modules/
+*.env
