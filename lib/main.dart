@@ -3,21 +3,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import 'firebase_options.dart'; // Make sure you ran 'flutterfire configure'!
+import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Load the secret file
-  // Note: We use a try-catch in case you forgot the file!
+  // 1. Load the secret file securely
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
     print("Error loading .env file: $e");
   }
 
-  // 2. Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -48,33 +46,92 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  // 2. Setup Gemini Model
-  // REPLACE WITH YOUR ACTUAL KEY
-  final ChatSession _chatSession = GenerativeModel(
-    model: 'gemini-2.5-flash',
-    // accessing the key securely
-    apiKey: dotenv.env['GEMINI_API_KEY'] ?? "",
-  ).startChat();
+  // VARIABLES
+  late ChatSession _chatSession;
+  bool _isLoadingHistory = true; // Shows spinner while loading history
 
-  // Define Users for the UI
+  // SETUP GEMINI (SECURELY)
+  final GenerativeModel _model = GenerativeModel(
+    model: 'gemini-2.5-flash',
+    apiKey: dotenv.env['GEMINI_API_KEY'] ?? "",
+  );
+
+  // USER PROFILES
   final ChatUser _currentUser = ChatUser(id: '1', firstName: 'Me');
   final ChatUser _aiUser = ChatUser(
       id: '2',
       firstName: 'Daily Bot',
-      profileImage: "https://cdn-icons-png.flaticon.com/512/4712/4712027.png" // AI Icon
+      profileImage: "https://cdn-icons-png.flaticon.com/512/4712/4712027.png"
   );
+
+  @override
+  void initState() {
+    super.initState();
+    // Start to load past context immediately when app opens
+    _loadMemoryFromDB();
+  }
+
+  // --- LOADING PREVIOUS CONTEXT INTO THIS CHAT SESSION ---
+  Future<void> _loadMemoryFromDB() async {
+    print("🧠 Loading AI Memory...");
+
+    try {
+      // 1. Fetch last 10 messages from Firestore
+      final snapshot = await FirebaseFirestore.instance
+          .collection('chats')
+          .doc('test_user')
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .limit(10) // Limit to save tokens
+          .get();
+
+      // 2. Convert Firestore data to Gemini 'Content' objects
+      List<Content> history = [];
+
+      if (snapshot.docs.isNotEmpty) {
+        history = snapshot.docs.map((doc) {
+          final data = doc.data();
+          final text = data['text'] ?? '';
+          final isUser = data['isUser'] ?? false;
+
+          if (isUser) {
+            return Content.text(text);
+          } else {
+            return Content.model([TextPart(text)]);
+          }
+        }).toList().reversed.toList(); // REVERSE: Gemini needs Oldest -> Newest
+      }
+
+      // 3. Start the chat with this history!
+      _chatSession = _model.startChat(history: history);
+      print("✅ AI Memory Loaded with ${history.length} messages.");
+
+    } catch (e) {
+      print("❌ Error loading memory: $e");
+      // Fallback: Start empty chat if DB fails
+      _chatSession = _model.startChat();
+    } finally {
+      setState(() {
+        _isLoadingHistory = false; // Stop spinner
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("My Daily Companion")),
-      // 3. LISTEN TO FIRESTORE
-      body: StreamBuilder<QuerySnapshot>(
+
+      // IF LOADING: Show Spinner
+      // IF READY: Show Chat
+      body: _isLoadingHistory
+          ? const Center(child: CircularProgressIndicator())
+          : StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('chats')
-            .doc('test_user') // Must match your JS Bot's user ID
+            .doc('test_user')
             .collection('messages')
-            .orderBy('timestamp', descending: true) // Newest at bottom
+            .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -109,9 +166,9 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // 4. HANDLE SENDING
+  // SEND MESSAGE LOGIC
   Future<void> _handleSendMessage(ChatMessage chatMessage) async {
-    // A. Save User Message to Firestore
+    // 1. Save User Message to Firestore
     await FirebaseFirestore.instance
         .collection('chats')
         .doc('test_user')
@@ -124,23 +181,21 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      // B. Send to Gemini (With History!)
-      // Note: _chatSession keeps history in memory as long as app is open.
-      // For a hackathon, this is fine. For production, you'd rebuild history from DB.
+      // 2. Send to Gemini (Now knows history!)
       final response = await _chatSession.sendMessage(
         Content.text(chatMessage.text),
       );
 
       final aiReply = response.text ?? "I'm speechless!";
 
-      // C. Save AI Reply to Firestore
+      // 3. Save AI Reply to Firestore
       await FirebaseFirestore.instance
           .collection('chats')
           .doc('test_user')
           .collection('messages')
           .add({
         'text': aiReply,
-        'isUser': false, // It's the AI
+        'isUser': false,
         'timestamp': FieldValue.serverTimestamp(),
         'sender': "AI Companion",
       });
