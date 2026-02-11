@@ -2,14 +2,14 @@ import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:firebase_ai/firebase_ai.dart'; // 1. NEW IMPORT
 import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'persona.dart'; // Your persona file
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Load the secret file securely
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
@@ -46,17 +46,12 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  // VARIABLES
   late ChatSession _chatSession;
-  bool _isLoadingHistory = true; // Shows spinner while loading history
+  bool _isLoadingHistory = true;
 
-  // SETUP GEMINI (SECURELY)
-  final GenerativeModel _model = GenerativeModel(
-    model: 'gemini-2.5-flash',
-    apiKey: dotenv.env['GEMINI_API_KEY'] ?? "",
-  );
+  // 2. NEW: Setup Model using FirebaseAI
+  late final GenerativeModel _model;
 
-  // USER PROFILES
   final ChatUser _currentUser = ChatUser(id: '1', firstName: 'Me');
   final ChatUser _aiUser = ChatUser(
       id: '2',
@@ -67,25 +62,37 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Start to load past context immediately when app opens
+    _initializeModel(); // Initialize model first
+  }
+
+  void _initializeModel() {
+    // 3. Use FirebaseAI.googleAI() to use your API Key
+    _model = FirebaseAI.googleAI().generativeModel(
+      model: 'gemini-2.5-flash', // Or 'gemini-2.0-flash'
+      systemInstruction: Content.system(chatBotPersona),
+
+      // 4. ENABLE GROUNDING (Search)
+      tools: [
+        Tool.googleSearch(), // This works natively in firebase_ai!
+      ],
+    );
+
+    // After model is ready, load history
     _loadMemoryFromDB();
   }
 
-  // --- LOADING PREVIOUS CONTEXT INTO THIS CHAT SESSION ---
   Future<void> _loadMemoryFromDB() async {
     print("🧠 Loading AI Memory...");
 
     try {
-      // 1. Fetch last 10 messages from Firestore
       final snapshot = await FirebaseFirestore.instance
           .collection('chats')
           .doc('test_user')
           .collection('messages')
           .orderBy('timestamp', descending: true)
-          .limit(10) // Limit to save tokens
+          .limit(10)
           .get();
 
-      // 2. Convert Firestore data to Gemini 'Content' objects
       List<Content> history = [];
 
       if (snapshot.docs.isNotEmpty) {
@@ -99,20 +106,18 @@ class _ChatScreenState extends State<ChatScreen> {
           } else {
             return Content.model([TextPart(text)]);
           }
-        }).toList().reversed.toList(); // REVERSE: Gemini needs Oldest -> Newest
+        }).toList().reversed.toList();
       }
 
-      // 3. Start the chat with this history!
       _chatSession = _model.startChat(history: history);
-      print("✅ AI Memory Loaded with ${history.length} messages.");
+      print("✅ AI Memory Loaded.");
 
     } catch (e) {
       print("❌ Error loading memory: $e");
-      // Fallback: Start empty chat if DB fails
       _chatSession = _model.startChat();
     } finally {
       setState(() {
-        _isLoadingHistory = false; // Stop spinner
+        _isLoadingHistory = false;
       });
     }
   }
@@ -121,9 +126,6 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("My Daily Companion")),
-
-      // IF LOADING: Show Spinner
-      // IF READY: Show Chat
       body: _isLoadingHistory
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<QuerySnapshot>(
@@ -138,7 +140,6 @@ class _ChatScreenState extends State<ChatScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Convert Firestore data to DashChat messages
           List<ChatMessage> messages = snapshot.data!.docs.map((doc) {
             var data = doc.data() as Map<String, dynamic>;
             return ChatMessage(
@@ -166,9 +167,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // SEND MESSAGE LOGIC
   Future<void> _handleSendMessage(ChatMessage chatMessage) async {
-    // 1. Save User Message to Firestore
     await FirebaseFirestore.instance
         .collection('chats')
         .doc('test_user')
@@ -181,14 +180,12 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      // 2. Send to Gemini (Now knows history!)
       final response = await _chatSession.sendMessage(
         Content.text(chatMessage.text),
       );
 
       final aiReply = response.text ?? "I'm speechless!";
 
-      // 3. Save AI Reply to Firestore
       await FirebaseFirestore.instance
           .collection('chats')
           .doc('test_user')
