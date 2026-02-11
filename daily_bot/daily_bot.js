@@ -1,9 +1,13 @@
 const admin = require('firebase-admin');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 
-// 1. Setup Keys
+// 1. IMPORT PROMPT FILE
+const { dailyPrompt } = require('./daily_prompt');
+
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// 2. Initialize the client
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -15,7 +19,7 @@ async function runBot() {
   console.log("🤖 Bot Waking Up...");
 
   try {
-    // --- STEP 1: MEMORY CHECK ---
+    // --- MEMORY CHECK (Same as before) ---
     const todayStr = new Date().toISOString().split('T')[0];
     const trackerRef = db.collection('bot_memory').doc('daily_tracker');
     const trackerDoc = await trackerRef.get();
@@ -25,37 +29,55 @@ async function runBot() {
       return;
     }
 
-    // --- STEP 2: THE DICE ROLL ---
-    // Get current hour in UTC.
-    // Malaysia 9 PM = 13:00 UTC. This is our deadline.
+    // --- DICE ROLL (Same as before) ---
     const currentHourUTC = new Date().getUTCHours();
     const isLastChance = (currentHourUTC >= 13);
-
-    // 100% chance to send now to test if the AI integration works.
     const shouldSend = Math.random() < 1.0;
 
-    console.log(`Hour (UTC): ${currentHourUTC} | Last Chance: ${isLastChance} | Should Send: ${shouldSend}`);
+    console.log(`Hour: ${currentHourUTC} | Last Chance: ${isLastChance} | Should Send: ${shouldSend}`);
 
-    // If the dice lost AND it is not the last chance -> Sleep
     if (!shouldSend && !isLastChance) {
       console.log("Not sending. Trying again next hour.");
-      return; // STOP HERE.
+      return;
     }
 
     console.log("Sending message now...");
 
-    // --- STEP 3: GENERATE SIMPLE CONTENT ---
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // --- STEP 3: GENERATE CONTENT WITH SEARCH ---
 
-    // SUPER SIMPLE PROMPT
-    const prompt = "Write a short, friendly 'Hello' message to a friend. No hashtags.";
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
 
-    const result = await model.generateContent(prompt);
-    const messageText = result.response.text().trim();
+      // 1. Pass your specific prompt here
+      contents: dailyPrompt,
+
+      // 2. ENABLE GOOGLE SEARCH (Critical for Step 3 of your prompt)
+      tools: [
+        { googleSearch: {} }
+      ],
+
+      // 3. Configuration
+      config: {
+        responseMimeType: 'text/plain',
+        // Optional: Temperature controls creativity (0.0 - 2.0)
+        temperature: 1.0,
+      }
+    });
+
+    // --- STEP 4: HANDLE RESPONSE ---
+    // The response might contain "groundingMetadata" (citations),
+    // but your prompt asks the AI to remove them. We trust the AI,
+    // but we can also trim just in case.
+    const messageText = response.text ? response.text.trim() : "";
+
+    if (!messageText) {
+      console.error("❌ Error: Received empty response from Gemini.");
+      return;
+    }
 
     console.log(`📝 Gemini generated: "${messageText}"`);
 
-    // --- STEP 4: SAVE TO DB ---
+    // --- STEP 5: SAVE TO DB ---
     await db.collection('chats').doc('test_user').collection('messages').add({
       text: messageText,
       sender: "AI Companion",
@@ -63,7 +85,6 @@ async function runBot() {
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // --- STEP 5: UPDATE MEMORY ---
     await trackerRef.set({ lastSentDate: todayStr });
     console.log("✅ Success! Message sent.");
 
