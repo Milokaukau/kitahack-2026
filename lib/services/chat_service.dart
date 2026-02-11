@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_ai/firebase_ai.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../persona.dart'; // Import your persona
 
 class ChatService {
