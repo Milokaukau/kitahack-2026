@@ -1,6 +1,7 @@
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:notification/chat_page.dart';
 import 'package:notification/main.dart';
@@ -11,6 +12,13 @@ class NotificationService {
   Future<void> init() async {
     _firebaseMessaging = FirebaseMessaging.instance;
     await _firebaseMessaging.requestPermission();
+
+    // Get the FCM token and print it
+    final fcmToken = await _firebaseMessaging.getToken();
+    if (kDebugMode) {
+      print('FCM Token: $fcmToken');
+    }
+
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       // Handle foreground messages if needed
