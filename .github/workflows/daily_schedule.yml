@@ -2,16 +2,16 @@ name: Daily AI Companion
 
 on:
   schedule:
-    # 09:00 UTC = 5:00 PM Malaysia/Singapore Time
-    - cron: '0 9 * * *'
-  workflow_dispatch: # Keep this so you can still test manually!
+    # Run at minute 0, every hour from 0 to 13 UTC (8 AM to 9 PM MYT)
+    - cron: '0 0-13 * * *'
+  workflow_dispatch: # Allows manual testing button
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./daily_bot  # <-- Make sure this line is still here!
+        working-directory: ./daily_bot
 
     steps:
       - uses: actions/checkout@v3
@@ -27,4 +27,5 @@ jobs:
       - name: Run AI Bot
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: node daily_bot.js

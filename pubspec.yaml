@@ -10,6 +10,18 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Firebase Core & Firestore (To read/write messages)
+  firebase_core: ^3.15.2
+  cloud_firestore: ^5.0.0
+
+  # Gemini AI SDK for Dart (To generate replies instantly)
+
+  # Chat UI (Optional, but saves you 10 hours of UI work)
+  # dash_chat_2 is the easiest for hackathons.
+  dash_chat_2: ^0.0.18
+  flutter_dotenv: ^6.0.0
+  firebase_ai: ^2.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -17,3 +29,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env
