@@ -141,7 +141,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               child: Text(
                                 text,
                                 style: TextStyle(
-                                  color: isUser ? Colors.white : Colors.white.withOpacity(0.9),
+                                  color: isUser ? Colors.white : Colors.white.withValues(alpha: 0.9),
                                   fontSize: 16,
                                   height: 1.4, // Better line spacing for large blocks of text
                                 ),
