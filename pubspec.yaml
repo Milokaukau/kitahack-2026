@@ -21,6 +21,7 @@ dependencies:
   dash_chat_2: ^0.0.18
   flutter_dotenv: ^6.0.0
   firebase_ai: ^2.3.0
+  firebase_auth: ^5.7.0
 
 dev_dependencies:
   flutter_test:

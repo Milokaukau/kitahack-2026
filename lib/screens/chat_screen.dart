@@ -40,7 +40,18 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("My Daily Companion")),
+      appBar: AppBar(
+        title: const Text("My Daily Companion"),
+        actions: [
+          // --- NEW LOGOUT BUTTON ---
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              _chatService.signOut();
+            },
+          )
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<QuerySnapshot>(

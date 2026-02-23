@@ -1,15 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_ai/firebase_ai.dart';
-import '../persona.dart'; // Import your persona
+import '../persona.dart';
 
 class ChatService {
   late final GenerativeModel _model;
   late ChatSession _chatSession;
-  final String userId = 'test_user'; // Hardcoded for now, can be dynamic later
 
-  // Initialize the model and session
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // 1. CHANGED: Dynamically get the currently logged-in user's UID
+  String get currentUserId {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception("User is not logged in!");
+    }
+    return user.uid;
+  }
+
   Future<void> initialize() async {
-    // 1. Setup Model
     _model = FirebaseAI.googleAI().generativeModel(
       model: 'gemini-2.5-flash',
       systemInstruction: Content.system(chatBotPersona),
@@ -18,16 +27,19 @@ class ChatService {
       ],
     );
 
-    // 2. Load History for Context
     await _loadHistory();
   }
 
-  // Load last 10 messages to give Gemini context
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
+
   Future<void> _loadHistory() async {
     try {
+      // 2. CHANGED: Use currentUserId instead of userId
       final snapshot = await FirebaseFirestore.instance
           .collection('chats')
-          .doc(userId)
+          .doc(currentUserId)
           .collection('messages')
           .orderBy('timestamp', descending: true)
           .limit(10)
@@ -36,13 +48,11 @@ class ChatService {
       List<Content> history = [];
 
       if (snapshot.docs.isNotEmpty) {
-        // Map Firestore data to Gemini Content objects
         history = snapshot.docs.map((doc) {
           final data = doc.data();
           final text = data['text'] ?? '';
           final isUser = data['isUser'] ?? false;
 
-          // Correctly format history for Gemini
           return isUser
               ? Content.text(text)
               : Content.model([TextPart(text)]);
@@ -50,29 +60,28 @@ class ChatService {
       }
 
       _chatSession = _model.startChat(history: history);
-      print("✅ AI Memory Loaded.");
+      print("✅ AI Memory Loaded for User: $currentUserId");
     } catch (e) {
       print("❌ Error loading memory: $e");
       _chatSession = _model.startChat();
     }
   }
 
-  // Get the stream of messages for the UI
   Stream<QuerySnapshot> getMessagesStream() {
+    // 3. CHANGED: Use currentUserId instead of userId
     return FirebaseFirestore.instance
         .collection('chats')
-        .doc(userId)
+        .doc(currentUserId)
         .collection('messages')
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
 
-  // Handle sending a message
   Future<void> sendMessage(String text) async {
-    // 1. Save User Message to DB
+    // 4. CHANGED: Use currentUserId instead of userId
     await FirebaseFirestore.instance
         .collection('chats')
-        .doc(userId)
+        .doc(currentUserId)
         .collection('messages')
         .add({
       'text': text,
@@ -82,17 +91,16 @@ class ChatService {
     });
 
     try {
-      // 2. Send to Gemini
       final response = await _chatSession.sendMessage(
         Content.text(text),
       );
 
       final aiReply = response.text ?? "I'm speechless!";
 
-      // 3. Save AI Reply to DB
+      // 5. CHANGED: Use currentUserId instead of userId
       await FirebaseFirestore.instance
           .collection('chats')
-          .doc(userId)
+          .doc(currentUserId)
           .collection('messages')
           .add({
         'text': aiReply,
