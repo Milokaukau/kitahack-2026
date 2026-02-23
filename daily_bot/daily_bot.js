@@ -65,44 +65,55 @@ async function runBot() {
 
     console.log(`📝 Gemini generated: "${messageText}"`);
 
-    // --- STEP 4: FETCH ALL USERS FROM FIREBASE AUTH ---
-    console.log("🔍 Fetching all registered users...");
-    let allUserIds = [];
-    let nextPageToken;
+    // --- STEP 4: FETCH USERS FROM FIRESTORE ---
+        console.log("🔍 Fetching users from database...");
 
-    // We use a loop to handle pagination in case you get thousands of users!
-    do {
-      const listUsersResult = await admin.auth().listUsers(1000, nextPageToken);
-      listUsersResult.users.forEach((userRecord) => {
-        allUserIds.push(userRecord.uid);
-      });
-      nextPageToken = listUsersResult.pageToken;
-    } while (nextPageToken);
+        // Fetch from the 'users' collection instead of Auth so we get the FCM tokens instantly!
+        const usersSnapshot = await db.collection('users').get();
 
-    if (allUserIds.length === 0) {
-      console.log("⚠️ No users found. Exiting without sending.");
-      return;
-    }
+        if (usersSnapshot.empty) {
+          console.log("⚠️ No users found in database. Exiting without sending.");
+          return;
+        }
 
-    console.log(`👥 Found ${allUserIds.length} users. Broadcasting message...`);
+        console.log(`👥 Found ${usersSnapshot.size} users. Broadcasting messages & notifications...`);
 
-    // --- STEP 5: SAVE TO DB FOR EVERY USER ---
-    // Create an array of database-write promises
-    const sendPromises = allUserIds.map(uid => {
-      return db.collection('chats').doc(uid).collection('messages').add({
-        text: messageText,
-        sender: "AI Companion",
-        isUser: false,
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
-      });
-    });
+        // --- STEP 5: SAVE TO DB AND SEND PUSH NOTIFICATIONS ---
+        const sendPromises = usersSnapshot.docs.map(async (userDoc) => {
+          const userId = userDoc.id;
+          const fcmToken = userDoc.data().fcmToken;
 
-    // Execute all database writes concurrently
-    await Promise.all(sendPromises);
+          // 1. Add the chat message to the user's Firestore history
+          const dbPromise = db.collection('chats').doc(userId).collection('messages').add({
+            text: messageText,
+            sender: "AI Companion",
+            isUser: false,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+          });
 
-    // Update the tracker so it doesn't run again today
-    await trackerRef.set({ lastSentDate: todayStr });
-    console.log("✅ Success! Message sent to all users.");
+          // 2. Send the Push Notification via Firebase Cloud Messaging
+          let pushPromise = Promise.resolve(); // Fallback in case a user hasn't generated a token yet
+
+          if (fcmToken) {
+            const payload = {
+              notification: {
+                title: "AI Companion",
+                body: "You have 1 new message!"
+              },
+              token: fcmToken
+            };
+
+            pushPromise = admin.messaging().send(payload)
+              .then(() => console.log(`🔔 Notification sent to ${userId}`))
+              .catch((err) => console.log(`⚠️ Failed to push to ${userId} (Token might be old):`, err.message));
+          }
+
+          // Execute both the database write and the push notification concurrently!
+          return Promise.all([dbPromise, pushPromise]);
+        });
+
+        // Wait for all messages and notifications to finish processing
+        await Promise.all(sendPromises);
 
   } catch (error) {
     console.error("❌ Error running bot:", error);

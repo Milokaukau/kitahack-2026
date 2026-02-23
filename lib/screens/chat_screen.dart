@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/chat_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -19,6 +21,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _initChat();
+    _setupPushNotifications();
   }
 
   Future<void> _initChat() async {
@@ -27,6 +30,50 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _setupPushNotifications() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    try {
+      // 1. Request permission
+      print('🔔 1. Requesting notification permissions...');
+      NotificationSettings settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        print('✅ 2. Permission granted!');
+
+        // 2. Fetch the FCM token
+        print('⏳ 3. Fetching FCM token...');
+        String? token = await messaging.getToken();
+        print('🔑 4. FCM Token: $token');
+
+        // 3. Get User ID
+        String? userId = FirebaseAuth.instance.currentUser?.uid;
+        print('👤 5. Current User ID: $userId');
+
+        // 4. Save to Firestore
+        if (token != null && userId != null) {
+          print('💾 6. Attempting to save token to Firestore...');
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .set({'fcmToken': token}, SetOptions(merge: true));
+
+          print('🎉 7. SUCCESS! Token saved to database.');
+        } else {
+          print('⚠️ SKIPPED SAVE: Token is $token, UserID is $userId');
+        }
+      } else {
+        print('❌ User declined notification permissions.');
+      }
+    } catch (e) {
+      print('🔥 ERROR in _setupPushNotifications: $e');
     }
   }
 
