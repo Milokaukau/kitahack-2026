@@ -78,15 +78,48 @@ async function runBot() {
     console.log(`📝 Gemini generated: "${messageText}"`);
 
     // --- STEP 5: SAVE TO DB ---
-    await db.collection('chats').doc('test_user').collection('messages').add({
-      text: messageText,
-      sender: "AI Companion",
-      isUser: false,
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
-    });
+        await db.collection('chats').doc('test_user').collection('messages').add({
+          text: messageText,
+          sender: "Kawan Ai", // <-- Updated to match your new persona!
+          isUser: false,
+          timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
 
-    await trackerRef.set({ lastSentDate: todayStr });
-    console.log("✅ Success! Message sent.");
+        console.log("✅ Success! Message saved to database.");
+
+        // --- STEP 6: SEND PUSH NOTIFICATION (The Missing Code!) ---
+        // Fetch the token from the users collection
+        const userDoc = await db.collection('users').doc('test_user').get();
+
+        if (userDoc.exists && userDoc.data().fcmToken) {
+          const fcmToken = userDoc.data().fcmToken;
+
+          const payload = {
+            notification: {
+              title: "Kawan Ai",
+              body: "You have 1 new message! 🤖",
+            },
+            android: {
+              priority: "high", // Forces the heads-up pop-up
+              notification: {
+                icon: "bot_icon", // Your transparent stencil!
+                color: "#9D7CFF", // Your custom purple circle
+                defaultSound: true
+              }
+            },
+            token: fcmToken
+          };
+
+          // Send it to the phone!
+          await admin.messaging().send(payload);
+          console.log("🔔 Push notification sent to test_user!");
+        } else {
+          console.log("⚠️ No FCM token found. Message saved, but no notification sent.");
+        }
+
+        // --- STEP 7: UPDATE MEMORY TRACKER ---
+        await trackerRef.set({ lastSentDate: todayStr });
+        console.log("✅ Bot sequence complete.");
 
   } catch (error) {
     console.error("❌ Error running bot:", error);
