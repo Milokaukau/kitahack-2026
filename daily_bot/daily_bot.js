@@ -49,7 +49,7 @@ async function runBot() {
       model: "gemini-2.5-flash",
 
       // 1. Pass your specific prompt here
-      contents: dailyPrompt,
+      contents: dailyPrompt(),
 
       // 2. ENABLE GOOGLE SEARCH (Critical for Step 3 of your prompt)
       tools: [
