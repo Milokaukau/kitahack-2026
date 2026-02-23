@@ -46,7 +46,7 @@ async function runBot() {
     // --- STEP 3: GENERATE CONTENT WITH SEARCH ---
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
 
       // 1. Pass your specific prompt here
       contents: dailyPrompt(),
