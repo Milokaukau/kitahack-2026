@@ -72,7 +72,7 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Proactive Friend', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const Text('Kawan Ai', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
                   const SizedBox(height: 40),
                   _buildTextField(label: 'Email', hint: 'you@example.com', controller: _emailController),
                   const SizedBox(height: 20),
