@@ -96,12 +96,20 @@ async function runBot() {
 
           if (fcmToken) {
             const payload = {
-              notification: {
-                title: "AI Companion",
-                body: "You have 1 new message!"
-              },
-              token: fcmToken
-            };
+                      notification: {
+                        title: "Hey there!",
+                        body: "You have 1 new message."
+                      },
+                      // --- NEW: Android-specific settings to force the pop-up ---
+                      android: {
+                        priority: "high",
+                        notification: {
+                          sound: "default", // Sound is required to trigger heads-up on modern Android!
+                        }
+                      },
+                      // ----------------------------------------------------------
+                      token: fcmToken
+                    };
 
             pushPromise = admin.messaging().send(payload)
               .then(() => console.log(`🔔 Notification sent to ${userId}`))
