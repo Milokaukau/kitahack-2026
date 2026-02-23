@@ -122,7 +122,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           if (!isUser) ...[
                             const CircleAvatar(
                               backgroundColor: Color(0xFF25283D),
-                              child: Text('🤖', style: TextStyle(fontSize: 20)),
+                              backgroundImage: AssetImage('assets/bot_icon.png'),
                             ),
                             const SizedBox(width: 8),
                           ],
