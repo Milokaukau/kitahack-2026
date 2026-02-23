@@ -19,7 +19,7 @@ async function runBot() {
   console.log("🤖 Bot Waking Up...");
 
   try {
-    // --- MEMORY CHECK (Same as before) ---
+    // --- MEMORY CHECK ---
     const todayStr = new Date().toISOString().split('T')[0];
     const trackerRef = db.collection('bot_memory').doc('daily_tracker');
     const trackerDoc = await trackerRef.get();
@@ -29,7 +29,7 @@ async function runBot() {
       return;
     }
 
-    // --- DICE ROLL (Same as before) ---
+    // --- DICE ROLL ---
     const currentHourUTC = new Date().getUTCHours();
     const isLastChance = (currentHourUTC >= 13);
     const shouldSend = Math.random() < 1.0;
@@ -44,30 +44,18 @@ async function runBot() {
     console.log("Sending message now...");
 
     // --- STEP 3: GENERATE CONTENT WITH SEARCH ---
-
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-
-      // 1. Pass your specific prompt here
       contents: dailyPrompt,
-
-      // 2. ENABLE GOOGLE SEARCH (Critical for Step 3 of your prompt)
       tools: [
         { googleSearch: {} }
       ],
-
-      // 3. Configuration
       config: {
         responseMimeType: 'text/plain',
-        // Optional: Temperature controls creativity (0.0 - 2.0)
         temperature: 1.0,
       }
     });
 
-    // --- STEP 4: HANDLE RESPONSE ---
-    // The response might contain "groundingMetadata" (citations),
-    // but your prompt asks the AI to remove them. We trust the AI,
-    // but we can also trim just in case.
     const messageText = response.text ? response.text.trim() : "";
 
     if (!messageText) {
@@ -77,16 +65,44 @@ async function runBot() {
 
     console.log(`📝 Gemini generated: "${messageText}"`);
 
-    // --- STEP 5: SAVE TO DB ---
-    await db.collection('chats').doc('test_user').collection('messages').add({
-      text: messageText,
-      sender: "AI Companion",
-      isUser: false,
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    // --- STEP 4: FETCH ALL USERS FROM FIREBASE AUTH ---
+    console.log("🔍 Fetching all registered users...");
+    let allUserIds = [];
+    let nextPageToken;
+
+    // We use a loop to handle pagination in case you get thousands of users!
+    do {
+      const listUsersResult = await admin.auth().listUsers(1000, nextPageToken);
+      listUsersResult.users.forEach((userRecord) => {
+        allUserIds.push(userRecord.uid);
+      });
+      nextPageToken = listUsersResult.pageToken;
+    } while (nextPageToken);
+
+    if (allUserIds.length === 0) {
+      console.log("⚠️ No users found. Exiting without sending.");
+      return;
+    }
+
+    console.log(`👥 Found ${allUserIds.length} users. Broadcasting message...`);
+
+    // --- STEP 5: SAVE TO DB FOR EVERY USER ---
+    // Create an array of database-write promises
+    const sendPromises = allUserIds.map(uid => {
+      return db.collection('chats').doc(uid).collection('messages').add({
+        text: messageText,
+        sender: "AI Companion",
+        isUser: false,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
     });
 
+    // Execute all database writes concurrently
+    await Promise.all(sendPromises);
+
+    // Update the tracker so it doesn't run again today
     await trackerRef.set({ lastSentDate: todayStr });
-    console.log("✅ Success! Message sent.");
+    console.log("✅ Success! Message sent to all users.");
 
   } catch (error) {
     console.error("❌ Error running bot:", error);
