@@ -68,7 +68,7 @@ This application is currently available as an Android APK.
 2. Enable Installation: You may need to go to your device's settings and allow "Install from unknown sources" for your browser or file manager.
 3. Install: Tap the downloaded APK file and follow the on-screen prompts to install.
 
-![chatbot_screenshot](https://github.com/user-attachments/assets/ab5ca91d-d5d5-470e-a4f4-8752c0f8b810)
+<img width="200" alt="chatbot_screenshot" src="https://github.com/user-attachments/assets/ab5ca91d-d5d5-470e-a4f4-8752c0f8b810" />
 
 # Future Roadmap
 - 📊 Mood Analytics: Summarize weekly sentiment to provide mental health insights.
