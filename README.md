@@ -55,13 +55,16 @@ The app utilizes a Real-Time Stream Architecture:
 # Challenges Faced
 - Composite Indexing: Solved FAILED_PRECONDITION errors by manually creating composite indexes in Firebase for userId and timestamp.
 - API Configuration: Resolved v1beta version mismatches by standardizing on the stable gemini-2.5-flash model.
-- Security: Implemented .env management to ensure GEMINI_API_KEY is never leaked to public repositories.
 
-# Installation & Setup ?
-download APK (only available for Android) https://drive.google.com/drive/folders/19U3gFJY9off4gC8dlIOacGqI_-5kjaVZ?usp=sharing
+# Installation & Setup
+This application is currently available as an Android APK.
+1. Download the APK: Click here to download from https://drive.google.com/drive/folders/19U3gFJY9off4gC8dlIOacGqI_-5kjaVZ?usp=sharing
+2. Enable Installation: You may need to go to your device's settings and allow "Install from unknown sources" for your browser or file manager.
+3. Install: Tap the downloaded APK file and follow the on-screen prompts to install.
 
 # Future Roadmap
 - 📊 Mood Analytics: Summarize weekly sentiment to provide mental health insights.
 - 🎙️ Voice Personas: Integrate Google Text-to-Speech for auditory companionship.
 - 📍 Location-Based Suggestions: Real-world venue suggestions via Google Maps integration.
 - 🌐 Global Expansion: More diverse personas and multi-language support.
+- 📱 Cross-Platform Support: Build an iOS counterpart to make our app available beyond Android.
