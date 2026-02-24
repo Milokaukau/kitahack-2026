@@ -1,3 +1,6 @@
+<img width="200" height="200" alt="bot_icon" src="https://github.com/user-attachments/assets/ec4e1e0b-d51a-42fd-873d-03bd7fc76a65" />
+
+
 # 💕 Kawan AI
 An AI-powered companion designed to break the "Cycle of Isolation." By acting as a proactive friend, this app helps individuals with social anxiety regain confidence through judgment-free, real-world interactions.
 
@@ -64,6 +67,8 @@ This application is currently available as an Android APK.
 1. Download the APK: Click here to download from https://drive.google.com/drive/folders/19U3gFJY9off4gC8dlIOacGqI_-5kjaVZ?usp=sharing
 2. Enable Installation: You may need to go to your device's settings and allow "Install from unknown sources" for your browser or file manager.
 3. Install: Tap the downloaded APK file and follow the on-screen prompts to install.
+
+![chatbot_screenshot](https://github.com/user-attachments/assets/ab5ca91d-d5d5-470e-a4f4-8752c0f8b810)
 
 # Future Roadmap
 - 📊 Mood Analytics: Summarize weekly sentiment to provide mental health insights.
