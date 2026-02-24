@@ -21,13 +21,12 @@ We built an AI friend that takes the lead. Unlike standard bots, it initiates ch
 # Key Features
 - 📢 Proactive Interaction: The AI initiates conversations at random times daily—it doesn't just wait for you.
 - 🎭 Human-Like Personas: Interact with grounded characters, like a 21-year-old programmer from KL.
-- 🧠 Persistent Memory: Every interaction is stored in the cloud, allowing the AI to "remember" your history and grow with you.
 - 🌍 Real-Time Context: Integrated with world events to ensure conversations feel authentic and current.
 
 # Tech Stack
 **Google Technologies**
 
-- Gemini AI (gemini-1.5-flash): High-speed, context-aware dialogue engine.
+- Gemini AI (gemini-2.5-flash): High-speed, context-aware dialogue engine.
 - Cloud Firestore: Real-time NoSQL database for instant chat synchronization.
 - Firebase Console: Infrastructure management and security rule enforcement.
 - Android Studio: Primary development environment.
@@ -55,11 +54,11 @@ The app utilizes a Real-Time Stream Architecture:
 
 # Challenges Faced
 - Composite Indexing: Solved FAILED_PRECONDITION errors by manually creating composite indexes in Firebase for userId and timestamp.
-- API Configuration: Resolved v1beta version mismatches by standardizing on the stable gemini-1.5-flash model.
+- API Configuration: Resolved v1beta version mismatches by standardizing on the stable gemini-2.5-flash model.
 - Security: Implemented .env management to ensure GEMINI_API_KEY is never leaked to public repositories.
 
 # Installation & Setup ?
-git clone https://github.com/Milokaukau/kitahack-2026.git
+download APK (only available for Android) https://drive.google.com/drive/folders/19U3gFJY9off4gC8dlIOacGqI_-5kjaVZ?usp=sharing
 
 # Future Roadmap
 - 📊 Mood Analytics: Summarize weekly sentiment to provide mental health insights.
