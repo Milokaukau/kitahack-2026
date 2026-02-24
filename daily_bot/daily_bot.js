@@ -98,6 +98,8 @@ async function runBot() {
 
     // --- STEP 6: SEND MASS PUSH NOTIFICATION ---
     if (fcmTokens.length > 0) {
+      const uniqueTokens = [...new Set(fcmTokens)];
+      
       console.log(`Sending notifications to ${fcmTokens.length} device(s)...`);
       
       const payload = {
@@ -113,7 +115,7 @@ async function runBot() {
             defaultSound: true
           }
         },
-        tokens: fcmTokens // Notice the plural 'tokens' here!
+        tokens: uniqueTokens 
       };
 
       const pushResponse = await admin.messaging().sendEachForMulticast(payload);
