@@ -14,9 +14,12 @@ An AI-powered companion designed to break the "Cycle of Isolation." By acting as
 We built an AI friend that takes the lead. Unlike standard bots, it initiates check-ins and shares authentic stories, creating a safe practice space for users to rebuild their social muscles.
 
 **SDG Alignment**
-- SDG 3 (Good Health): Reducing loneliness through proactive companionship.
-- SDG 4 (Quality Education): Teaching digital safety and life skills through casual storytelling.
-- SDG 10 (Reduced Inequalities): Using diverse AI personas to foster empathy and reduce discrimination.
+
+SDG 3 (Good Health & Well-being): Reducing loneliness through proactive companionship. Unlike traditional chatbots, Kawan Ai takes the initiative to check in daily, just like a real friend. Even a simple notification showing a new message waiting can brighten someone's day, making them feel seen and significantly less isolated.
+
+SDG 4 (Quality Education): Teaching digital safety and life skills through casual chatting. By naturally introducing diverse daily topics—ranging from fun local trends like a new cafe opening to practical advice like handling a car accident—the app helps users continuously absorb useful information while safely practicing their conversational skills.
+
+SDG 10 (Reduced Inequalities): Fostering empathy and providing accessible, non-judgmental companionship to anyone, regardless of their background. Kawan Ai gently weaves in discussions about the real-world challenges faced by individuals with special needs. This casual, ongoing exposure helps users develop a deeper understanding of others, actively reducing societal prejudice and discrimination over time.
 
 # Key Features
 - 📢 Proactive Interaction: The AI initiates conversations at random times daily—it doesn't just wait for you.
