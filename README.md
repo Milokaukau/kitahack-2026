@@ -1,4 +1,4 @@
-# 🫂 The Proactive AI Companion
+# 💕 Kawan AI
 An AI-powered companion designed to break the "Cycle of Isolation." By acting as a proactive friend, this app helps individuals with social anxiety regain confidence through judgment-free, real-world interactions.
 
 # Project Overview
