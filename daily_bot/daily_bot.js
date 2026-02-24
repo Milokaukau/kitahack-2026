@@ -19,7 +19,7 @@ async function runBot() {
   console.log("🤖 Bot Waking Up...");
 
   try {
-    // --- MEMORY CHECK (Same as before) ---
+    // --- STEP 1: MEMORY CHECK ---
     const todayStr = new Date().toISOString().split('T')[0];
     const trackerRef = db.collection('bot_memory').doc('daily_tracker');
     const trackerDoc = await trackerRef.get();
@@ -29,7 +29,7 @@ async function runBot() {
       return;
     }
 
-    // --- DICE ROLL (Same as before) ---
+    // --- STEP 2: DICE ROLL ---
     const currentHourUTC = new Date().getUTCHours();
     const isLastChance = (currentHourUTC >= 13);
     const shouldSend = Math.random() < 1.0;
@@ -44,30 +44,13 @@ async function runBot() {
     console.log("Sending message now...");
 
     // --- STEP 3: GENERATE CONTENT WITH SEARCH ---
-
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
-
-      // 1. Pass your specific prompt here
+      model: "gemini-2.5-flash",
       contents: dailyPrompt(),
-
-      // 2. ENABLE GOOGLE SEARCH (Critical for Step 3 of your prompt)
-      tools: [
-        { googleSearch: {} }
-      ],
-
-      // 3. Configuration
-      config: {
-        responseMimeType: 'text/plain',
-        // Optional: Temperature controls creativity (0.0 - 2.0)
-        temperature: 1.0,
-      }
+      tools: [{ googleSearch: {} }],
+      config: { responseMimeType: 'text/plain', temperature: 1.0 }
     });
 
-    // --- STEP 4: HANDLE RESPONSE ---
-    // The response might contain "groundingMetadata" (citations),
-    // but your prompt asks the AI to remove them. We trust the AI,
-    // but we can also trim just in case.
     const messageText = response.text ? response.text.trim() : "";
 
     if (!messageText) {
@@ -77,49 +60,71 @@ async function runBot() {
 
     console.log(`📝 Gemini generated: "${messageText}"`);
 
-    // --- STEP 5: SAVE TO DB ---
-        await db.collection('chats').doc('test_user').collection('messages').add({
-          text: messageText,
-          sender: "Kawan Ai", // <-- Updated to match your new persona!
-          isUser: false,
-          timestamp: admin.firestore.FieldValue.serverTimestamp()
-        });
+    // --- STEP 4: FETCH ALL USERS ---
+    console.log("Fetching all users from database...");
+    const usersSnapshot = await db.collection('users').get();
+    
+    if (usersSnapshot.empty) {
+      console.log("⚠️ No users found in the database. Exiting.");
+      return;
+    }
 
-        console.log("✅ Success! Message saved to database.");
+    const dbWrites = [];
+    const fcmTokens = [];
 
-        // --- STEP 6: SEND PUSH NOTIFICATION (The Missing Code!) ---
-        // Fetch the token from the users collection
-        const userDoc = await db.collection('users').doc('test_user').get();
+    // --- STEP 5: SAVE MESSAGE TO EVERY USER'S CHAT ---
+    usersSnapshot.forEach((userDoc) => {
+      const userId = userDoc.id; 
+      const userData = userDoc.data();
 
-        if (userDoc.exists && userDoc.data().fcmToken) {
-          const fcmToken = userDoc.data().fcmToken;
+      // Save to this specific user's chat subcollection
+      const writePromise = db.collection('chats').doc(userId).collection('messages').add({
+        text: messageText,
+        sender: "Kawan Ai", 
+        isUser: false,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+      dbWrites.push(writePromise);
 
-          const payload = {
-            notification: {
-              title: "Kawan Ai",
-              body: "You have 1 new message! 🤖",
-            },
-            android: {
-              priority: "high", // Forces the heads-up pop-up
-              notification: {
-                icon: "bot_icon", // Your transparent stencil!
-                color: "#9D7CFF", // Your custom purple circle
-                defaultSound: true
-              }
-            },
-            token: fcmToken
-          };
+      // Collect their phone token for the notification blast
+      if (userData.fcmToken) {
+        fcmTokens.push(userData.fcmToken);
+      }
+    });
 
-          // Send it to the phone!
-          await admin.messaging().send(payload);
-          console.log("🔔 Push notification sent to test_user!");
-        } else {
-          console.log("⚠️ No FCM token found. Message saved, but no notification sent.");
-        }
+    // Execute all database writes at once
+    await Promise.all(dbWrites);
+    console.log(`✅ Success! Message saved to ${dbWrites.length} user(s).`);
 
-        // --- STEP 7: UPDATE MEMORY TRACKER ---
-        await trackerRef.set({ lastSentDate: todayStr });
-        console.log("✅ Bot sequence complete.");
+    // --- STEP 6: SEND MASS PUSH NOTIFICATION ---
+    if (fcmTokens.length > 0) {
+      console.log(`Sending notifications to ${fcmTokens.length} device(s)...`);
+      
+      const payload = {
+        notification: {
+          title: "Kawan Ai",
+          body: "You have 1 new message! 🤖",
+        },
+        android: {
+          priority: "high",
+          notification: {
+            icon: "bot_icon", 
+            color: "#9D7CFF",
+            defaultSound: true
+          }
+        },
+        tokens: fcmTokens // Notice the plural 'tokens' here!
+      };
+
+      const pushResponse = await admin.messaging().sendEachForMulticast(payload);
+      console.log(`🔔 Push notifications finished! (${pushResponse.successCount} succeeded, ${pushResponse.failureCount} failed)`);
+    } else {
+      console.log("⚠️ No FCM tokens found. Messages saved, but no notifications sent.");
+    }
+
+    // --- STEP 7: UPDATE MEMORY TRACKER ---
+    await trackerRef.set({ lastSentDate: todayStr });
+    console.log("✅ Bot sequence complete.");
 
   } catch (error) {
     console.error("❌ Error running bot:", error);
