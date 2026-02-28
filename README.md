@@ -1,7 +1,7 @@
 <img width="200" height="200" alt="bot_icon" src="https://github.com/user-attachments/assets/ec4e1e0b-d51a-42fd-873d-03bd7fc76a65" />
 
 
-# 💜 Kawan AI
+# 💜 Kawan Ai
 An AI-powered companion designed to break the "Cycle of Isolation." By acting as a proactive friend, this app helps individuals with social anxiety regain confidence through judgment-free, real-world interactions.
 
 # Project Overview
@@ -33,6 +33,8 @@ SDG 10 (Reduced Inequalities): Fostering empathy and providing accessible, non-j
 **Google Technologies**
 
 - Gemini AI (gemini-2.5-flash): High-speed, context-aware dialogue engine.
+- Google Search Grounding: Integrated directly into the Gemini prompt to fetch real-time, localized news and events.
+- Firebase Cloud Messaging (FCM): Powers the targeted, multicast push notifications to wake up users' phones.
 - Cloud Firestore: Real-time NoSQL database for instant chat synchronization.
 - Firebase Console: Infrastructure management and security rule enforcement.
 - Android Studio: Primary development environment.
@@ -40,23 +42,33 @@ SDG 10 (Reduced Inequalities): Fostering empathy and providing accessible, non-j
 **Supporting Tools**
 
 - Flutter: Cross-platform UI framework.
-- Google Generative AI Package: Bridge between Flutter and the LLM.
+- Node.js & Firebase Admin SDK: Powers the standalone backend automation script (daily_bot.js) that securely bypasses client-side restrictions.
+- GitHub Actions: Acts as our serverless infrastructure, running a cron job to automatically wake the bot up and trigger the daily messages.
 
 # Implementation Details
 
 **System Architecture**
 
 The app utilizes a Real-Time Stream Architecture:
-- Frontend: Flutter UI listens to a Firestore Stream for instant rendering.
-- Persistence: Every message is indexed with userId and timestamp.
-- Intelligence: The GenerativeModel processes history to generate persona-driven responses.
+- Frontend (Reactive): The Flutter UI listens to a Firestore Stream for instant rendering and real-time chat synchronization.
+- Backend (Proactive): A serverless Node.js script powered by GitHub Actions runs a daily cron job to initiate contact via Firebase Cloud Messaging (FCM).
+- Persistence: Every message is indexed in Cloud Firestore with a userId and timestamp to maintain state across devices.
+- Intelligence: The Google Generative AI model acts on both the client and server sides, using strict "System Instructions" and local Search Grounding to process chat history and generate localized, persona-driven responses.
 
 **Workflow**
 
-- Input: User message is saved to Firestore.
-- Processing: Message history is sent to the Gemini ChatSession.
-- Response: Gemini generates a reply based on its specific "System Instruction."
-- Update: The response writes back to Firestore, auto-updating the UI.
+**Workflow A: The Proactive Check-In (Server-Side)**
+
+- Trigger: GitHub Actions wakes the Node.js bot (daily_bot.js) on a scheduled cron job.
+- Generation: The bot calls the Gemini API to generate a locally grounded, casual conversation starter.
+- Delivery: The backend writes the message directly to the user's Firestore inbox and triggers a multicast FCM push notification to the user's physical device.
+
+**Workflow B: The Real-Time Chat (Client-Side)**
+
+- Input: The user taps the notification and replies. The message is saved to Firestore.
+- Processing: The Flutter app sends the updated message history directly to the Gemini ChatSession.
+- Response: Gemini generates a contextual reply based on the ongoing conversation.
+- Update: The response writes back to Firestore, auto-updating the UI via the real-time stream.
 
 # Challenges Faced
 - Composite Indexing: Solved FAILED_PRECONDITION errors by manually creating composite indexes in Firebase for userId and timestamp.
